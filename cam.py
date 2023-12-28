@@ -1,17 +1,15 @@
 from time import sleep 
 import camera, machine,uos
-from utilities import get_timestamp
-
-led = machine.Pin(4, machine.Pin.OUT)
+from utilities import get_timestamp, flasher
 
 def take_photo(flash=None):
     try:
         try: 
             camera.init(0, format=camera.JPEG)
             camera.framesize(camera.FRAME_HD)
-            if flash:led.on()
+            if flash:flasher(4, "on")
             img = camera.capture()
-            if flash:led.off()
+            if flash:flasher(4, "off")
             try:
                 file_path = f"SD/{get_timestamp()}.jpg"
                 with open(file_path, "wb") as file:
