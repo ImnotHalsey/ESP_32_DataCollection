@@ -10,21 +10,14 @@ def get_timestamp():
     timestamp = "{:04}{:02}{:02}{:02}{:02}{:02}".format(*formatted_time[:6])
     return str(timestamp)
 
-class TemperatureProbe:
-    def __init__(self, pin_num):
-        self.onewire = onewire.OneWire(machine.Pin(pin_num))
-        self.sensor = ds18x20.DS18X20(self.onewire)
-        self.probe_address = self.sensor.scan()[0]  # Assuming only one temperature probe connected
-
-    def read_temperature(self):
-        self.sensor.convert_temp()
-        time.sleep_ms(750)
-        temperature = self.sensor.read_temp(self.probe_address)
-        return int(temperature)
-
 def flasher(pin_no, mode):
     pin = machine.Pin(pin_no, machine.Pin.OUT)
     if mode == "on":pin.on()
     elif mode == "off":pin.off()
     else:print("Invalid mode. Use 'on' or 'off'.")
 
+def soft_reset(feed):
+    if feed > 3:
+        print("Performing soft reset...")
+        machine.reset()
+    else:pass
