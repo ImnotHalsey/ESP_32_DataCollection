@@ -22,4 +22,9 @@ class TemperatureProbe:
         temperature = self.sensor.read_temp(self.probe_address)
         return int(temperature)
 
+def flasher(pin_no, mode):
+    pin = machine.Pin(pin_no, machine.Pin.OUT)
+    if mode == "on":pin.on()
+    elif mode == "off":pin.off()
+    else:print("Invalid mode. Use 'on' or 'off'.")
 
