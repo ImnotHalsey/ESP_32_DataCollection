@@ -6,7 +6,7 @@ def take_photo(flash=None):
     try:
         try: 
             camera.init(0, format=camera.JPEG)
-            camera.framesize(camera.FRAME_HD)
+            camera.framesize(camera.FRAME_XGA )
             if flash:flasher(4, "on")
             img = camera.capture()
             if flash:flasher(4, "off")

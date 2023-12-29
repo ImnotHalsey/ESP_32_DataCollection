@@ -1,14 +1,4 @@
-import utime, onewire, ntptime, machine, ds18x20, time
-
-def get_timestamp():
-    timezone_offset = 5 * 60 * 60 + 30 * 60
-    try: ntptime.settime()
-    except ImportError: pass  
-    current_time = utime.time()
-    ist_time = current_time + timezone_offset
-    formatted_time = utime.localtime(ist_time)
-    timestamp = "{:04}{:02}{:02}{:02}{:02}{:02}".format(*formatted_time[:6])
-    return str(timestamp)
+import utime, ntptime, machine, errno
 
 def flasher(pin_no, mode):
     pin = machine.Pin(pin_no, machine.Pin.OUT)
@@ -16,8 +6,18 @@ def flasher(pin_no, mode):
     elif mode == "off":pin.off()
     else:print("Invalid mode. Use 'on' or 'off'.")
 
-def soft_reset(feed):
-    if feed > 3:
-        print("Performing soft reset...")
-        machine.reset()
-    else:pass
+def get_timestamp():
+    if utime.localtime()[0] > 2022:
+        pass
+    else:
+        try:
+            ntptime.settime()
+        except OSError as e:
+            if e.args[0] == errno.ETIMEDOUT:
+                print("Error: NTP server timed out. Using local time instead.")
+            else:
+                raise e
+    
+    timestamp = "{:04}{:02}{:02}{:02}{:02}{:02}".format(*utime.localtime(utime.time() + (5 * 60 * 60 + 30 * 60))[:6])
+    print(timestamp)
+    return timestamp
