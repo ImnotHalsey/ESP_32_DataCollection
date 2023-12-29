@@ -21,3 +21,9 @@ def get_timestamp():
     timestamp = "{:04}{:02}{:02}{:02}{:02}{:02}".format(*utime.localtime(utime.time() + (5 * 60 * 60 + 30 * 60))[:6])
     print(timestamp)
     return timestamp
+
+def soft_reset(feed):
+    if feed > 3:
+        print("Performing soft reset...")
+        machine.reset()
+    else:pass
