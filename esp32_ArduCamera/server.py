@@ -1,8 +1,7 @@
 import urequests, uos, ujson
 
-def upload_photo():
+def upload_photo(path):
     try:
-        path = 'image.jpg'
         with open(path, 'rb') as file:
             image_content = file.read()
 

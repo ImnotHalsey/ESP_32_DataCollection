@@ -1,9 +1,8 @@
 from machine import SPI, Pin
 from utime import sleep_ms
-import utime
-import uos
-import ujson
+import utime, uos, ujson
 from io import BytesIO
+import gc
 
 class Camera:
     # Register definitions and other constants
@@ -166,11 +165,16 @@ class Camera:
 
     def _read_fifo_data(self):
         data = BytesIO()
-
-        while self.received_length > 0:
-            chunk = self._read_byte()
-            data.write(chunk)
-
+        try:
+            chunk_size = 1024
+            while self.received_length > 0:
+                remaining_bytes = min(self.received_length, chunk_size)
+                chunk = self._read_bytes(remaining_bytes)
+                data.write(chunk)
+                self.received_length -= remaining_bytes
+                gc.collect()
+        except MemoryError as e:
+            print("MemoryError:", e)
         return data.getvalue()
 
     def set_resolution(self, new_resolution):

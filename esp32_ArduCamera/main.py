@@ -4,7 +4,7 @@ from machine import SPI, Pin
 from arducam import Camera
 from utime import sleep_ms
 from server import upload_photo
-from utilities import get_timestamp
+from utilities import get_timestamp, flasher
 
 ssid = 'FARMROBO_2G'
 password = 'powertiller1'
@@ -37,24 +37,29 @@ def init_camera():
 
 def take_two(cam):
     gc.collect()
-    cam.set_resolution(cam.RESOLUTION_640X480)
+    cam.set_resolution(cam.RESOLUTION_320X240)
     data = cam.capture_jpg()
     gc.collect()
     return data
 
-#connect_to_wifi(ssid, password)
+connect_to_wifi(ssid, password)
 mountSD()
 scam = init_camera()
 
-for i in range(10):
+while 1:
+    flasher(12, "on")
     file_path = f"SD/{get_timestamp()}.jpg"
     with open(file_path, "wb") as file:
         file.write(take_two(scam))
-    #upload_photo(file_path)
-    print("Done")
+    file.close()
     gc.collect()
+    #upload_photo(file_path)
+    flasher(12, "off")
+    print("Done")
+    sleep_ms(200)
 
 
 
 
     
+
