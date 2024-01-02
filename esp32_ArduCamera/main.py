@@ -1,4 +1,4 @@
-import os, time, network, gc
+import os, time, network, gc, utime
 from sdcard import SDCard
 from machine import SPI, Pin
 from arducam import Camera
@@ -37,7 +37,7 @@ def init_camera():
 
 def take_two(cam):
     gc.collect()
-    cam.set_resolution(cam.RESOLUTION_320X240)
+    cam.set_resolution(cam.RESOLUTION_1280X720)
     data = cam.capture_jpg()
     gc.collect()
     return data
@@ -46,20 +46,26 @@ connect_to_wifi(ssid, password)
 mountSD()
 scam = init_camera()
 
-while 1:
+
+
+while True:
+    start_time = utime.ticks_ms()
+
     flasher(12, "on")
-    file_path = f"SD/{get_timestamp()}.jpg"
-    with open(file_path, "wb") as file:
-        file.write(take_two(scam))
-    file.close()
+    path = take_two(scam)
+    print("Done with path:", path)
     gc.collect()
-    #upload_photo(file_path)
     flasher(12, "off")
-    print("Done")
+
+    end_time = utime.ticks_ms()
+    time_consumed = utime.ticks_diff(end_time, start_time)
+
+    print("Time consumed:", time_consumed, "ms")
+
     sleep_ms(200)
 
 
 
 
-    
 
+    

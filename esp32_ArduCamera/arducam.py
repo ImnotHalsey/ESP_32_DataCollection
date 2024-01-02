@@ -1,11 +1,9 @@
-from machine import SPI, Pin
 from utime import sleep_ms
+from machine import SPI, Pin
 import utime, uos, ujson
-from io import BytesIO
-import gc
+from utilities import get_timestamp
 
 class Camera:
-    # Register definitions and other constants
     CAM_REG_SENSOR_RESET = 0x07
     CAM_SENSOR_RESET_ENABLE = 0x40
 
@@ -86,8 +84,6 @@ class Camera:
 
     WHITE_BALANCE_WAIT_TIME_MS = 500
 
-    FILE_MANAGER_LOG_NAME = 'filemanager.log'
-
     def __init__(self, spi_bus, cs):
         self.cs = cs
         self.spi_bus = spi_bus
@@ -102,7 +98,7 @@ class Camera:
         self.run_start_up_config = True
         self.pixel_format = self.CAM_IMAGE_PIX_FMT_JPG
         self.old_pixel_format = self.pixel_format
-        self.resolution = self.RESOLUTION_640X480
+        self.resolution = self.RESOLUTION_1280X720
         self.old_resolution = self.resolution
         self.set_filter(self.SPECIAL_NORMAL)
         self.received_length = 0
@@ -111,26 +107,6 @@ class Camera:
         self.start_time = utime.ticks_ms()
 
         print('Camera initialized')
-
-    def filemanager(self, filename):
-        count = 0
-        files = {}
-
-        if self.FILE_MANAGER_LOG_NAME not in uos.listdir():
-            with open(self.FILE_MANAGER_LOG_NAME, 'w') as f:
-                f.write(ujson.dumps({}))
-
-        with open(self.FILE_MANAGER_LOG_NAME, 'r') as f:
-            files = ujson.loads(f.read())
-            if filename in files:
-                count = files[filename] + 1
-            files[filename] = count
-
-        with open(self.FILE_MANAGER_LOG_NAME, 'w') as f:
-            f.write(ujson.dumps(files))
-
-        new_filename = f"{filename}_{count}.jpg" if count > 0 else f"{filename}.jpg"
-        return new_filename
     
     def capture_jpg(self):
         if utime.ticks_diff(utime.ticks_ms(), self.start_time) >= self.WHITE_BALANCE_WAIT_TIME_MS:
@@ -147,8 +123,6 @@ class Camera:
                 self._wait_idle()
 
             self.run_start_up_config = False
-
-            # Essential steps for capture
             self._clear_fifo_flag()
             self._wait_idle()
             self._start_capture()
@@ -160,22 +134,25 @@ class Camera:
 
             # Read and return the captured data as a bytearray
             image_data = self._read_fifo_data()
-            print('Captured')
-            return bytearray(image_data)
+            print('Image Captured')
+            return image_data
 
     def _read_fifo_data(self):
-        data = BytesIO()
-        try:
-            chunk_size = 1024
+        file_path = f"SD/{get_timestamp()}.jpg"
+        with open(file_path, "wb") as file:
             while self.received_length > 0:
-                remaining_bytes = min(self.received_length, chunk_size)
-                chunk = self._read_bytes(remaining_bytes)
-                data.write(chunk)
-                self.received_length -= remaining_bytes
-                gc.collect()
-        except MemoryError as e:
-            print("MemoryError:", e)
-        return data.getvalue()
+                chunk = self._read_byte()
+                file.write(chunk)
+        return file_path
+
+    def _read_byte(self):
+        self.cs.off()
+        self.spi_bus.write(bytes([self.SINGLE_FIFO_READ]))
+        data = self.spi_bus.read(1)
+        data = self.spi_bus.read(1)
+        self.cs.on()
+        self.received_length -= 1
+        return data
 
     def set_resolution(self, new_resolution):
         self.resolution = new_resolution
@@ -213,32 +190,6 @@ class Camera:
 
     def _start_capture(self):
         self._write_reg(self.ARDUCHIP_FIFO, self.FIFO_START_MASK)
-
-    def _set_capture(self):
-        print('Setting up capture...')
-        
-        # Clear FIFO flag
-        print('Clearing FIFO flag...')
-        self._clear_fifo_flag()
-        self._wait_idle()
-        print('FIFO flag cleared.')
-
-        # Start capture
-        print('Starting capture...')
-        self._start_capture()
-
-        # Wait for capture to complete
-        print('Waiting for capture to complete...')
-        while self._get_bit(self.ARDUCHIP_TRIG, self.CAP_DONE_MASK) == 0:
-            sleep_ms(1)
-
-        # Read FIFO length
-        print('Capture complete. Reading FIFO length...')
-        self.received_length = self._read_fifo_length()
-        self.total_length = self.received_length
-        self.burst_first_flag = False
-
-        print(f'Capture setup complete. Received length: {self.received_length}')
 
     def _read_fifo_length(self):
         len1 = int.from_bytes(self._read_reg(self.FIFO_SIZE1), 1)
@@ -278,15 +229,6 @@ class Camera:
         data = self._bus_read(addr & 0x7F)
         return data
 
-    def _read_byte(self):
-        self.cs.off()
-        self.spi_bus.write(bytes([self.SINGLE_FIFO_READ]))
-        data = self.spi_bus.read(1)
-        data = self.spi_bus.read(1)
-        self.cs.on()
-        self.received_length -= 1
-        return data
-
     def _set_FIFO_burst(self):
         self.spi_bus.write(bytes([self.BURST_FIFO_READ]))
 
@@ -299,6 +241,5 @@ class Camera:
     def _get_bit(self, addr, bit):
         data = self._read_reg(addr)
         return int.from_bytes(data, 1) & bit
-
 
 
