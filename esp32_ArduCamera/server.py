@@ -27,3 +27,24 @@ def upload_photo(path):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return False
+
+
+
+def hit_api_with_json(json_data):
+    response = None  
+    try:
+        api_url = "https://testdatacollection.chaithanyasaipo.repl.co/get_data"
+        json_str = ujson.dumps(json_data)
+        response = urequests.post(api_url, data=json_str, headers={'Content-Type': 'application/json'})
+        if response.status_code == 200:
+            print(response.text)
+            return True
+        else:
+            print(f"API call failed with status code: {response.status_code}")
+    except OSError as e:
+        print(f"Network error: {str(e)}")
+    except ValueError as e:
+        print(f"JSON encoding error: {str(e)}")
+    finally:
+        if response:
+            response.close()'

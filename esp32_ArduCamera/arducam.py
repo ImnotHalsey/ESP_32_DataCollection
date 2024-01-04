@@ -1,6 +1,6 @@
 from utime import sleep_ms
 from machine import SPI, Pin
-import utime, uos, ujson
+import utime, uos, ujson, gc
 from utilities import get_timestamp
 
 class Camera:
@@ -98,7 +98,7 @@ class Camera:
         self.run_start_up_config = True
         self.pixel_format = self.CAM_IMAGE_PIX_FMT_JPG
         self.old_pixel_format = self.pixel_format
-        self.resolution = self.RESOLUTION_1280X720
+        self.resolution = self.RESOLUTION_1920X1080
         self.old_resolution = self.resolution
         self.set_filter(self.SPECIAL_NORMAL)
         self.received_length = 0
@@ -134,7 +134,7 @@ class Camera:
 
             # Read and return the captured data as a bytearray
             image_data = self._read_fifo_data()
-            print('Image Captured')
+            print(f'Image Captured in the path :: {image_data} ::')
             return image_data
 
     def _read_fifo_data(self):
@@ -144,10 +144,10 @@ class Camera:
                 chunk = self._read_byte()
                 file.write(chunk)
         return file_path
-
+    
     def _read_byte(self):
         self.cs.off()
-        self.spi_bus.write(bytes([self.SINGLE_FIFO_READ]))
+        self.spi_bus.write(bytes([self.SINGLE_FIFO_READ])  )
         data = self.spi_bus.read(1)
         data = self.spi_bus.read(1)
         self.cs.on()
@@ -156,7 +156,7 @@ class Camera:
 
     def set_resolution(self, new_resolution):
         self.resolution = new_resolution
-
+    
     def set_pixel_format(self, new_pixel_format):
         self.pixel_format = new_pixel_format
 
@@ -242,4 +242,23 @@ class Camera:
         data = self._read_reg(addr)
         return int.from_bytes(data, 1) & bit
 
+class CameraController:
+    def __init__(self):
+        self.cam = None
 
+    def init_camera(self):
+        spi_camera = SPI(1, sck=Pin(18), miso=Pin(19), mosi=Pin(23))
+        cs_camera = Pin(4, Pin.OUT)
+        self.cam = Camera(spi_camera, cs_camera)
+        sleep_ms(1000)
+
+    def capture_image(self):
+        gc.collect()
+        if self.cam is not None:
+            self.cam.set_resolution(self.cam.RESOLUTION_1920X1080)
+            data = self.cam.capture_jpg()
+            gc.collect()
+            return data
+        else:
+            print("Error: Camera not initialized.")
+            return None
